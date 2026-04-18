@@ -1,0 +1,174 @@
+<?xml version="1.0"?>
+<robot name="two_dof_arm" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+    <!-- Constants -->
+    <xacro:property name="PI" value="3.1415926535897931"/>
+    <xacro:property name="mass" value="1" /> <!-- Arbitrary mass -->
+    <xacro:property name="width" value="0.1" /> <!-- Link width -->
+    <xacro:property name="height1" value="2" /> <!-- Link 1 length -->
+    <xacro:property name="height2" value="1" /> <!-- Link 2 length -->
+    <xacro:property name="axel_offset" value="0.05" /> <!-- Space btw top of beam and the each joint -->
+
+    <!-- Material Definitions -->
+    <material name="black">
+        <color rgba="0 0 0 1"/>
+    </material>
+    <material name="orange">
+        <color rgba="1 0.65 0 1"/>
+    </material>
+
+    <!-- Inertial Matrix Macros -->
+    <xacro:macro name="default_inertial" params="mass">
+        <inertial>
+            <mass value="${mass}" />
+            <inertia ixx="1.0" ixy="0.0" ixz="0.0"
+                     iyy="1.0" iyz="0.0"
+                     izz="1.0" />
+        </inertial>
+    </xacro:macro>
+
+    <!-- Base Link -->
+    <link name="base_link">
+        <visual>
+            <origin xyz="0 0 0.1" rpy="0 0 0"/>
+            <geometry>
+                <box size="0.2 0.2 0.2"/>
+            </geometry>
+            <material name="black"/>
+        </visual>
+        <collision>
+            <origin xyz="0 0 0.1" rpy="0 0 0"/>
+            <geometry>
+                <box size="0.2 0.2 0.2"/>
+            </geometry>
+        </collision>
+        <xacro:default_inertial mass="10"/>
+    </link>
+
+    <!-- Joint 1 -->
+    <joint name="joint1" type="revolute">
+        <parent link="base_link"/>
+        <child link="link1"/>
+        <origin xyz="0 0 0.2" rpy="0 0 0"/>
+        <axis xyz="0 0 1"/>
+        <limit lower="-${PI}" upper="${PI}" effort="100" velocity="1"/>
+        <dynamics damping="0.7"/>
+    </joint>
+
+    <!-- Link 1 -->
+    <link name="link1">
+        <visual>
+            <origin xyz="0 0 ${height1/2}" rpy="0 0 0"/>
+            <geometry>
+                <box size="${width} ${width} ${height1}"/>
+            </geometry>
+            <material name="orange"/>
+        </visual>
+        <collision>
+            <origin xyz="0 0 ${height1/2}" rpy="0 0 0"/>
+            <geometry>
+                <box size="${width} ${width} ${height1}"/>
+            </geometry>
+        </collision>
+        <xacro:default_inertial mass="${mass}"/>
+    </link>
+
+    <!-- Joint 2 -->
+    <joint name="joint2" type="revolute">
+        <parent link="link1"/>
+        <child link="link2"/>
+        <origin xyz="0 ${width} ${height1 - axel_offset}" rpy="0 0 0"/>
+        <axis xyz="0 1 0"/>
+        <limit lower="-${PI/2}" upper="${PI/2}" effort="100" velocity="1"/>
+        <dynamics damping="0.7"/>
+    </joint>
+
+    <!-- Link 2 -->
+    <link name="link2">
+        <visual>
+            <origin xyz="0 0 ${height2/2}" rpy="0 0 0"/>
+            <geometry>
+                <box size="${width} ${width} ${height2}"/>
+            </geometry>
+            <material name="black"/>
+        </visual>
+        <collision>
+            <origin xyz="0 0 ${height2/2}" rpy="0 0 0"/>
+            <geometry>
+                <box size="${width} ${width} ${height2}"/>
+            </geometry>
+        </collision>
+        <xacro:default_inertial mass="${mass}"/>
+    </link>
+
+    <!-- Gripper Joint -->
+    <joint name="gripper_joint" type="prismatic">
+        <parent link="link2"/>
+        <child link="gripper_link"/>
+        <origin xyz="0 0 ${height2}" rpy="0 0 0"/>
+        <axis xyz="0 1 0"/>
+        <limit lower="0" upper="0.05" effort="100" velocity="0.5"/>
+    </joint>
+
+    <!-- Gripper Link -->
+    <link name="gripper_link">
+        <visual>
+            <origin xyz="0 0 0.05" rpy="0 0 0"/>
+            <geometry>
+                <box size="0.05 0.05 0.1"/>
+            </geometry>
+            <material name="orange"/>
+        </visual>
+        <collision>
+            <origin xyz="0 0 0.05" rpy="0 0 0"/>
+            <geometry>
+                <box size="0.05 0.05 0.1"/>
+            </geometry>
+        </collision>
+        <xacro:default_inertial mass="0.1"/>
+    </link>
+
+    <!-- Transmission for Joint 1 -->
+    <transmission name="tran1">
+        <type>transmission_interface/SimpleTransmission</type>
+        <joint name="joint1">
+            <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+        </joint>
+        <actuator name="motor1">
+            <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+            <mechanicalReduction>1</mechanicalReduction>
+        </actuator>
+    </transmission>
+
+    <!-- Transmission for Joint 2 -->
+    <transmission name="tran2">
+        <type>transmission_interface/SimpleTransmission</type>
+        <joint name="joint2">
+            <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+        </joint>
+        <actuator name="motor2">
+            <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+            <mechanicalReduction>1</mechanicalReduction>
+        </actuator>
+    </transmission>
+
+    <!-- Transmission for Gripper -->
+    <transmission name="tran3">
+        <type>transmission_interface/SimpleTransmission</type>
+        <joint name="gripper_joint">
+            <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+        </joint>
+        <actuator name="motor3">
+            <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+            <mechanicalReduction>1</mechanicalReduction>
+        </actuator>
+    </transmission>
+
+    <!-- Gazebo Plugin -->
+    <gazebo>
+        <plugin name="gazebo_ros_control" filename="libgazebo_ros_control.so">
+            <robotNamespace>/</robotNamespace>
+        </plugin>
+    </gazebo>
+
+</robot>
